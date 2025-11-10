@@ -2,3 +2,4 @@ flask==2.3.3
 opencv-python==4.5.5.64
 numpy==1.21.6
 pillow==8.4.0
+gunicorn==21.2.0
