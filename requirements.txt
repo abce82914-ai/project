@@ -4,9 +4,3 @@ opencv-python-headless==4.8.1.78
 numpy==1.24.3
 gunicorn==21.2.0
 Pillow==10.3.0
-
-# PRE-BUILT DLIB WHEEL FOR LINUX + PYTHON 3.8 (SKIPS COMPILATION)
-https://github.com/comethrusws/Dlib_linux_python_3.x/releases/download/manual-1/dlib-19.24.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-
-# Now install face-recognition (uses the pre-built dlib)
-face-recognition==1.3.0
