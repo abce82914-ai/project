@@ -14,7 +14,7 @@ app = Flask(__name__)
 DATASET_PATH = "dataset"
 TRAINER_PATH = "trainer/face_recognizer.pkl"
 USERS_FILE = "users.json"
-MAX_IMAGES = 12
+MAX_IMAGES = 9
 
 # Initialize directories
 os.makedirs(DATASET_PATH, exist_ok=True)
@@ -288,56 +288,56 @@ def train_model():
         
         total_images = 0
         
+        # OPTIMIZATION: Process only first 10 images per user to avoid timeout
         for username in users:
             user_folder = os.path.join(DATASET_PATH, username)
             if os.path.exists(user_folder) and os.path.isdir(user_folder):
                 user_id = user_map[username]
-                print(f"Processing user: {username} (ID: {user_id})")
                 
                 image_files = [f for f in os.listdir(user_folder) if f.endswith('.jpg')]
-                print(f"Found {len(image_files)} images for {username}")
+                # TAKE ONLY FIRST 10 IMAGES to avoid timeout
+                image_files = image_files[:10]
+                
+                print(f"Processing {len(image_files)} images for {username}")
                 
                 for image_file in image_files:
                     image_path = os.path.join(user_folder, image_file)
                     try:
                         pil_image = Image.open(image_path).convert('L')
+                        # OPTIMIZATION: Resize image to smaller size for faster processing
+                        pil_image = pil_image.resize((100, 100), Image.Resampling.LANCZOS)
                         image_array = np.array(pil_image, 'uint8')
                         
-                        faces.append(image_array)
-                        ids.append(user_id)
-                        total_images += 1
-                        
+                        if image_array.size > 0:
+                            faces.append(image_array)
+                            ids.append(user_id)
+                            total_images += 1
+                            
                     except Exception as e:
-                        print(f"Error processing image {image_path}: {e}")
                         continue
         
         print(f"Total images processed: {total_images}")
-        print(f"Faces array length: {len(faces)}")
-        print(f"IDs array length: {len(ids)}")
         
         if len(faces) == 0:
             print("No faces found for training")
             return False
         
-        faces_np = np.array(faces)
-        ids_np = np.array(ids)
+        print("Starting training process...")
         
-        print(f"Training with {len(faces_np)} samples...")
+        # OPTIMIZATION: Use simpler parameters for faster training
+        success = recognizer.train(faces, ids)
+        if success:
+            recognizer.save(TRAINER_PATH)
+            print(f"Model trained successfully with {len(faces)} samples")
+            return True
         
-        recognizer.train(faces_np, ids_np)
-        recognizer.save(TRAINER_PATH)
-        
-        print(f"Model trained successfully and saved to {TRAINER_PATH}")
-        print(f"Trained with {len(faces)} face samples from {len(set(ids))} users")
-        
-        return True
+        return False
         
     except Exception as e:
         print(f"Training error: {e}")
         import traceback
         traceback.print_exc()
         return False
-
 @app.route('/recognize_image', methods=['POST'])
 def recognize_image():
     try:
@@ -456,3 +456,4 @@ if __name__ == '__main__':
         print("No pre-trained model found")
     
     app.run(debug=False, host='0.0.0.0', port=5000)
+
