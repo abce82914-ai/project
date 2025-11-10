@@ -5,7 +5,8 @@ numpy==1.24.3
 gunicorn==21.2.0
 Pillow==10.3.0
 
-# PRE-COMPILED DLIP + FACE-RECOGNITION FOR PYTHON 3.8
-https://github.com/jloh02/dlib/releases/download/v19.24/dlib-19.24.2-cp38-cp38-win_amd64.whl; platform_system == "Windows"
-https://github.com/jloh02/dlib/releases/download/v19.24/dlib-19.24.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl; platform_system == "Linux"
+# PRE-BUILT DLIB WHEEL FOR LINUX + PYTHON 3.8 (SKIPS COMPILATION)
+https://github.com/comethrusws/Dlib_linux_python_3.x/releases/download/manual-1/dlib-19.24.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+
+# Now install face-recognition (uses the pre-built dlib)
 face-recognition==1.3.0
