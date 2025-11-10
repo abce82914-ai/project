@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Facial Recognition System GUI</title>
+<title>Facial Recognition System</title>
 <style>
   * {
     box-sizing: border-box;
@@ -312,7 +312,7 @@
   let isCameraOn = false;
   let mode = null;
   let registerImageCount = 0;
-  const maxRegisterImages = 10;
+  const maxRegisterImages = 12; // Reduced for Render
   let registerInterval = null;
   let recognizeInterval = null;
 
@@ -466,78 +466,91 @@
     }
   }
 
-  // ============== REGISTER FUNCTION (DUPLICATE CHECK REMOVED) ==============
-  async function register() {
+  // ============== REGISTER FUNCTION ==============
+  // ============== REGISTER FUNCTION ==============
+async function register() {
     const username = usernameInput.value.trim();
     if (!username) {
-      alert('Please enter a username to register.');
-      return;
+        alert('Please enter a username to register.');
+        return;
     }
 
     await startCamera();
     if (!isCameraOn) {
-      messageBox.textContent = 'Cannot start camera for registration.';
-      return;
+        messageBox.textContent = 'Cannot start camera for registration.';
+        return;
     }
 
     mode = 'register';
     registerImageCount = 0;
-    messageBox.textContent = 'Registration started. Please face the camera clearly.';
+    messageBox.textContent = 'Registration started. Please face the camera clearly. Move slightly for better samples.';
 
     registerInterval = setInterval(async () => {
-      if (!isCameraOn || mode !== 'register') {
-        clearInterval(registerInterval);
-        return;
-      }
-
-      const image = captureFrame();
-      if (!image) {
-        messageBox.textContent = 'Failed to capture image.';
-        return;
-      }
-
-      try {
-        const res = await fetch('/register_image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, image })
-        });
-        const json = await res.json();
-
-        if (json.status === 'success') {
-          registerImageCount = json.count;
-          messageBox.textContent = `Captured image ${registerImageCount}/${maxRegisterImages}`;
-          
-          if (registerImageCount >= maxRegisterImages) {
+        if (!isCameraOn || mode !== 'register') {
             clearInterval(registerInterval);
-            messageBox.textContent = 'Training model, please wait...';
-            
-            const trainRes = await fetch('/train', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username })
-            });
-            const trainJson = await trainRes.json();
-            
-            if (trainJson.status === 'success') {
-              messageBox.textContent = `User "${username}" registered successfully with ${maxRegisterImages} images!`;
-            } else {
-              messageBox.textContent = 'Training failed: ' + trainJson.message;
-            }
-            
-            stopCamera();
-            refreshUsers();
-          }
-        } else {
-          messageBox.textContent = 'Error: ' + json.message;
+            return;
         }
-      } catch (error) {
-        messageBox.textContent = 'Network error during registration.';
-        console.error('Registration error:', error);
-      }
-    }, 1500);
-  }
 
+        const image = captureFrame();
+        if (!image) {
+            messageBox.textContent = 'Failed to capture image.';
+            return;
+        }
+
+        try {
+            const res = await fetch('/register_image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, image })
+            });
+            const json = await res.json();
+
+            if (json.status === 'success') {
+                registerImageCount = json.count;
+                messageBox.textContent = `Captured image ${registerImageCount}/${maxRegisterImages}`;
+                
+                if (registerImageCount >= maxRegisterImages) {
+                    clearInterval(registerInterval);
+                    messageBox.textContent = 'Training model, please wait...';
+                    
+                    // Give a small delay to ensure all images are saved
+                    setTimeout(async () => {
+                        const trainRes = await fetch('/train', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username })
+                        });
+                        const trainJson = await trainRes.json();
+                        
+                        if (trainJson.status === 'success') {
+                            messageBox.textContent = trainJson.message;
+                        } else {
+                            messageBox.textContent = 'Training failed: ' + trainJson.message;
+                        }
+                        
+                        stopCamera();
+                        refreshUsers();
+                        
+                        // Check model status after training
+                        const checkRes = await fetch('/check_model');
+                        const checkJson = await checkRes.json();
+                        console.log('Model status after training:', checkJson);
+                        
+                    }, 1000);
+                }
+            } else {
+                messageBox.textContent = 'Error: ' + json.message;
+                clearInterval(registerInterval);
+                stopCamera();
+            }
+        } catch (error) {
+            messageBox.textContent = 'Network error during registration.';
+            console.error('Registration error:', error);
+            clearInterval(registerInterval);
+            stopCamera();
+        }
+    }, 1000); // Reduced interval to 1 second for faster capture
+}
   // ============== RECOGNIZE FUNCTION ==============
   async function recognize() {
     await startCamera();
@@ -586,7 +599,7 @@
     }, 2000);
   }
 
-  // ============== BUTTON HANDLERS (CLEANED) ==============
+  // ============== BUTTON HANDLERS ==============
   registerBtn.onclick = () => {
     if (isCameraOn) {
       alert('Please stop the current camera session before starting new.');
