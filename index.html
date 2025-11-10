@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Facial Recognition System GUI</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body, html {
+    margin: 0; 
+    padding: 0; 
+    height: 100%;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    overflow: hidden;
+  }
+  .outer-rectangle {
+    border: 2px solid #d1d9e6;
+    border-radius: 12px;
+    margin: 20px auto;
+    padding: 20px;
+    max-width: 1200px;
+    height: calc(100vh - 40px);
+    display: flex;
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  }
+  .left-panel {
+    flex: 6;
+    background: #000;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  #camera-preview {
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 10px;
+    object-fit: cover;
+    background: black;
+  }
+  .camera-overlay {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .right-panel {
+    flex: 4;
+    margin-left: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
+  .controls {
+    background: linear-gradient(to bottom, #e8f0fe, #d8e4fd);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    color: #1a237e;
+    margin-bottom: 20px;
+  }
+  label {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+  }
+  input[type="text"], select {
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    border-radius: 8px;
+    border: 1.5px solid #9fa8da;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    background-color: #ffffff;
+    color: #303f9f;
+  }
+  input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: #3f51b5;
+    box-shadow: 0 0 6px #9fa8da;
+  }
+  .btn-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  button {
+    flex: 1;
+    padding: 12px 0;
+    background: linear-gradient(to bottom, #3f51b5, #303f9f);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    box-shadow: 0 5px 10px rgba(63, 81, 181, 0.4);
+    transition: all 0.3s ease;
+  }
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 12px rgba(63, 81, 181, 0.5);
+  }
+  #stop-btn {
+    background: linear-gradient(to bottom, #d32f2f, #b71c1c);
+    margin-bottom: 18px;
+    box-shadow: 0 5px 10px rgba(211, 47, 47, 0.6);
+    padding: 20px 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    width: 100%;
+  }
+  #stop-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 12px rgba(211, 47, 47, 0.7);
+  }
+  #message-box {
+    min-height: 40px;
+    padding: 10px 14px;
+    background: #fff8e1;
+    border-radius: 8px;
+    color: #f57f17;
+    font-size: 1rem;
+    margin-bottom: 12px;
+    box-shadow: inset 0 1px 4px #ffecb3;
+    border-left: 4px solid #ffc107;
+  }
+  .registered-users {
+    background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
+    border-radius: 12px;
+    padding: 15px 20px;
+    height: 240px;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    color: #0d47a1;
+    font-weight: 600;
+    border: 1px solid #90caf9;
+  }
+  .registered-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #90caf9;
+  }
+  .registered-users-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0d47a1;
+  }
+  .user-count {
+    background: #3f51b5;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .user-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    border-left: 4px solid #3f51b5;
+    position: relative;
+  }
+  .user-entry:hover {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateX(5px);
+  }
+  .user-entry:last-child {
+    margin-bottom: 0;
+  }
+  .delete-user {
+    color: #c62828;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 4px;
+    background: #ffcdd2;
+    border: none;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    line-height: 1;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 0;
+    user-select: none;
+    flex-shrink: 0;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 2px 4px rgba(198, 40, 40, 0.2);
+  }
+  .delete-user:hover {
+    background: #ef9a9a;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 3px 6px rgba(198, 40, 40, 0.3);
+  }
+  .user-name {
+    flex: 1;
+    padding-right: 35px;
+  }
+  .empty-list {
+    text-align: center;
+    color: #78909c;
+    font-style: italic;
+    padding: 20px 0;
+  }
+  .keyboard-shortcut {
+    font-size: 0.85rem;
+    color: #5c6bc0;
+    margin-top: 5px;
+    text-align: center;
+  }
+  @media (max-width: 900px) {
+    .outer-rectangle {
+      flex-direction: column;
+      height: auto;
+      max-width: 95%;
+    }
+    .right-panel {
+      margin-left: 0;
+      margin-top: 25px;
+      flex: none;
+      height: auto;
+    }
+    .left-panel {
+      height: 320px;
+    }
+    #camera-preview {
+      max-height: 320px;
+    }
+    .registered-users {
+      height: 180px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="outer-rectangle">
+  <div class="left-panel" style="position: relative;">
+    <video id="camera-preview" autoplay muted playsinline></video>
+    <canvas id="overlay" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+    <div class="camera-overlay">Press 'Q' to stop camera</div>
+  </div>
+  <div class="right-panel">
+    <div class="controls">
+      <label for="camera-select">Select Camera</label>
+      <select id="camera-select"></select>
+
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Enter username here" />
+
+      <div class="btn-group">
+        <button id="register-btn">Register</button>
+        <button id="recognize-btn">Recognize</button>
+      </div>
+
+      <button id="stop-btn">Stop/Close Camera</button>
+      <div class="keyboard-shortcut">or press 'Q' key to stop</div>
+
+      <div id="message-box">System ready.</div>
+    </div>
+
+    <div class="registered-users" id="user-list">
+      <!-- Registered users will be loaded here -->
+    </div>
+  </div>
+</div>
+
+<script>
+  const video = document.getElementById('camera-preview');
+  const overlay = document.getElementById('overlay');
+  const ctx = overlay.getContext('2d');
+  const cameraSelect = document.getElementById('camera-select');
+  const usernameInput = document.getElementById('username');
+  const registerBtn = document.getElementById('register-btn');
+  const recognizeBtn = document.getElementById('recognize-btn');
+  const stopBtn = document.getElementById('stop-btn');
+  const messageBox = document.getElementById('message-box');
+  const userList = document.getElementById('user-list');
+
+  let stream = null;
+  let isCameraOn = false;
+  let mode = null;
+  let registerImageCount = 0;
+  const maxRegisterImages = 10;
+  let registerInterval = null;
+  let recognizeInterval = null;
+
+  async function getCameras() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      cameraSelect.innerHTML = '';
+      videoDevices.forEach((device, i) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || `Camera ${i + 1}`;
+        cameraSelect.appendChild(option);
+      });
+    } catch (e) {
+      cameraSelect.innerHTML = '<option>No cameras found</option>';
+    }
+  }
+
+  async function startCamera() {
+    if (isCameraOn) return;
+    try {
+      const constraints = {
+        video: { 
+          deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined,
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      };
+      
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => resolve();
+      });
+      
+      await video.play();
+
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+
+      isCameraOn = true;
+      messageBox.textContent = 'Camera started.';
+    } catch (e) {
+      messageBox.textContent = 'Failed to start camera: ' + e.message;
+      console.error('Camera error:', e);
+    }
+  }
+
+  function stopCamera() {
+    if (!isCameraOn) return;
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+    video.pause();
+    video.srcObject = null;
+    isCameraOn = false;
+    mode = null;
+    registerImageCount = 0;
+    clearOverlay();
+    clearIntervals();
+    messageBox.textContent = 'Camera stopped.';
+  }
+
+  function clearOverlay() {
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+  }
+
+  function clearIntervals() {
+    if (registerInterval) clearInterval(registerInterval);
+    if (recognizeInterval) clearInterval(recognizeInterval);
+    registerInterval = null;
+    recognizeInterval = null;
+  }
+
+  function captureFrame() {
+    if (!isCameraOn || video.videoWidth === 0) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  }
+
+  function drawFaceRectangles(faces) {
+    clearOverlay();
+    faces.forEach(face => {
+      const { x, y, width, height, name, confidence } = face;
+      ctx.strokeStyle = name === "Unknown" ? 'red' : 'green';
+      ctx.fillStyle = name === "Unknown" ? 'red' : 'green';
+      ctx.lineWidth = 3;
+      ctx.font = 'bold 16px Arial';
+      ctx.strokeRect(x, y, width, height);
+      const label = `${name} (${confidence})`;
+      const textMetrics = ctx.measureText(label);
+      const textWidth = textMetrics.width;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(x, y - 25, textWidth + 10, 25);
+      ctx.fillStyle = 'white';
+      ctx.fillText(label, x + 5, y - 8);
+    });
+  }
+
+  async function refreshUsers() {
+    try {
+      const res = await fetch('/get_users');
+      const users = await res.json();
+      userList.innerHTML = `
+        <div class="registered-users-header">
+          <div class="registered-users-title">Registered Users</div>
+          <div class="user-count">${users.length}</div>
+        </div>
+      `;
+      if (users.length === 0) {
+        userList.innerHTML += '<div class="empty-list">No users registered.</div>';
+      } else {
+        users.forEach(user => {
+          const div = document.createElement('div');
+          div.className = 'user-entry';
+          div.innerHTML = `<span class="user-name">${user}</span><button class="delete-user" data-user="${user}" title="Delete user">X</button>`;
+          userList.appendChild(div);
+        });
+        document.querySelectorAll('.delete-user').forEach(btn => {
+          btn.onclick = async () => {
+            if (confirm(`Delete user "${btn.dataset.user}"?`)) {
+              try {
+                const res = await fetch('/delete_user', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ username: btn.dataset.user })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                  messageBox.textContent = json.message;
+                  refreshUsers();
+                } else {
+                  messageBox.textContent = 'Delete failed: ' + json.message;
+                }
+              } catch {
+                messageBox.textContent = 'Network error while deleting user.';
+              }
+            }
+          };
+        });
+      }
+    } catch (e) {
+      messageBox.textContent = 'Failed to load users.';
+    }
+  }
+
+  // ============== REGISTER FUNCTION (DUPLICATE CHECK REMOVED) ==============
+  async function register() {
+    const username = usernameInput.value.trim();
+    if (!username) {
+      alert('Please enter a username to register.');
+      return;
+    }
+
+    await startCamera();
+    if (!isCameraOn) {
+      messageBox.textContent = 'Cannot start camera for registration.';
+      return;
+    }
+
+    mode = 'register';
+    registerImageCount = 0;
+    messageBox.textContent = 'Registration started. Please face the camera clearly.';
+
+    registerInterval = setInterval(async () => {
+      if (!isCameraOn || mode !== 'register') {
+        clearInterval(registerInterval);
+        return;
+      }
+
+      const image = captureFrame();
+      if (!image) {
+        messageBox.textContent = 'Failed to capture image.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/register_image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, image })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          registerImageCount = json.count;
+          messageBox.textContent = `Captured image ${registerImageCount}/${maxRegisterImages}`;
+          
+          if (registerImageCount >= maxRegisterImages) {
+            clearInterval(registerInterval);
+            messageBox.textContent = 'Training model, please wait...';
+            
+            const trainRes = await fetch('/train', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username })
+            });
+            const trainJson = await trainRes.json();
+            
+            if (trainJson.status === 'success') {
+              messageBox.textContent = `User "${username}" registered successfully with ${maxRegisterImages} images!`;
+            } else {
+              messageBox.textContent = 'Training failed: ' + trainJson.message;
+            }
+            
+            stopCamera();
+            refreshUsers();
+          }
+        } else {
+          messageBox.textContent = 'Error: ' + json.message;
+        }
+      } catch (error) {
+        messageBox.textContent = 'Network error during registration.';
+        console.error('Registration error:', error);
+      }
+    }, 1500);
+  }
+
+  // ============== RECOGNIZE FUNCTION ==============
+  async function recognize() {
+    await startCamera();
+    if (!isCameraOn) {
+      messageBox.textContent = 'Cannot start camera for recognition.';
+      return;
+    }
+
+    mode = 'recognize';
+    messageBox.textContent = 'Recognition started...';
+
+    recognizeInterval = setInterval(async () => {
+      if (!isCameraOn || mode !== 'recognize') {
+        clearInterval(recognizeInterval);
+        clearOverlay();
+        return;
+      }
+
+      const image = captureFrame();
+      if (!image) return;
+
+      try {
+        const res = await fetch('/recognize_image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image })
+        });
+        const json = await res.json();
+        
+        if (json.status === 'success') {
+          if (json.faces && json.faces.length > 0) {
+            drawFaceRectangles(json.faces);
+            messageBox.textContent = json.message;
+          } else {
+            clearOverlay();
+            messageBox.textContent = 'No faces detected.';
+          }
+        } else {
+          clearOverlay();
+          messageBox.textContent = 'Recognition error: ' + json.message;
+        }
+      } catch (error) {
+        messageBox.textContent = 'Network error during recognition.';
+        console.error('Recognition error:', error);
+      }
+    }, 2000);
+  }
+
+  // ============== BUTTON HANDLERS (CLEANED) ==============
+  registerBtn.onclick = () => {
+    if (isCameraOn) {
+      alert('Please stop the current camera session before starting new.');
+      return;
+    }
+    register();
+  };
+
+  recognizeBtn.onclick = () => {
+    if (isCameraOn) {
+      alert('Please stop the current camera session before starting new.');
+      return;
+    }
+    recognize();
+  };
+
+  stopBtn.onclick = () => stopCamera();
+
+  window.addEventListener('keydown', e => {
+    if ((e.key === 'q' || e.key === 'Q') && isCameraOn) stopCamera();
+  });
+
+  // Initialize
+  getCameras();
+  refreshUsers();
+  
+  video.addEventListener('resize', () => {
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+  });
+</script>
+
+</body>
+</html>
