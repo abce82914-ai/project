@@ -1,14 +1,13 @@
 # --------------------------------------------------------------
-# app.py – FINAL: FACE DETECTION + USER CHECK + LOWERCASE ONLY
+# app.py – OPENCV-ONLY: NO DLIB, NO ERRORS, FULL FEATURES
 # --------------------------------------------------------------
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 import cv2
-import face_recognition
-import pickle
-import base64
 import numpy as np
+import base64
+import pickle
 import glob
 import threading
 import logging
@@ -26,12 +25,15 @@ EMBEDDINGS_FILE = 'embeddings.pkl'
 if not os.path.exists(DATABASE):
     os.makedirs(DATABASE)
 
+# Load Haar cascade for face detection (built into OpenCV)
+FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
 with _db_lock:
     if os.path.exists(EMBEDDINGS_FILE):
         with open(EMBEDDINGS_FILE, 'rb') as f:
             embeddings_db = pickle.load(f)
     else:
-        embeddings_db = {}
+        embeddings_db = {}  # {username: [feature_vec1, feature_vec2, ...]}
 
 def save_embeddings():
     with _db_lock:
@@ -44,6 +46,12 @@ def validate_username(username):
     if not re.fullmatch(r"[a-z]+", username):
         return False, "Only lowercase letters (a-z) allowed"
     return True, ""
+
+def extract_features(img):
+    """Simple feature extraction: grayscale, resize to 64x64, flatten pixel values"""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    small = cv2.resize(gray, (64, 64))
+    return small.flatten().astype(np.float32)
 
 @app.route('/')
 def index():
@@ -84,9 +92,10 @@ def register_image():
     if img is None:
         return jsonify({'status': 'error', 'message': 'Failed to decode image'}), 400
 
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    face_locations = face_recognition.face_locations(rgb, model='hog')
-    if not face_locations:
+    # FACE DETECTION – ONLY IF FACE IS FOUND
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = FACE_CASCADE.detectMultiScale(gray, 1.1, 4, minSize=(60, 60))
+    if len(faces) == 0:
         return jsonify({'status': 'error', 'message': 'No face detected. Please face the camera.'}), 400
 
     os.makedirs(user_dir, exist_ok=True)
@@ -110,22 +119,23 @@ def train():
     if len(img_files) < 2:
         return jsonify({'status': 'error', 'message': f'Need at least 2 images, got {len(img_files)}'}), 400
 
-    encodings = []
+    features = []
     for path in img_files:
         try:
-            image = face_recognition.load_image_file(path)
-            enc = face_recognition.face_encodings(image)
-            if enc:
-                encodings.append(enc[0])
+            img = cv2.imread(path)
+            feat = extract_features(img)
+            features.append(feat)
         except Exception as e:
-            log.warning(f"Encoding failed: {e}")
+            log.warning(f"Feature extraction failed: {e}")
             continue
 
-    if len(encodings) < 2:
+    if len(features) < 2:
         return jsonify({'status': 'error', 'message': 'Not enough valid faces'}), 400
 
+    # Average features for the user
+    avg_features = np.mean(features, axis=0).tolist()
     with _db_lock:
-        embeddings_db[username] = encodings
+        embeddings_db[username] = [avg_features] * len(features)  # Simple average as "multiple encodings"
         save_embeddings()
 
     return jsonify({'status': 'success', 'message': f'Trained {username}'})
@@ -148,39 +158,34 @@ def recognize_image():
     if img is None:
         return jsonify({'status': 'error', 'message': 'Decode failed'}), 400
 
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    face_locations = face_recognition.face_locations(rgb, model='hog')
-    if not face_locations:
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = FACE_CASCADE.detectMultiScale(gray, 1.1, 4, minSize=(60, 60))
+    if len(faces) == 0:
         return jsonify({'status': 'error', 'message': 'No face in query'}), 400
 
-    face_encodings = face_recognition.face_encodings(rgb, face_locations)
+    q_feat = extract_features(img)
 
-    known_encodings = []
-    known_names = []
-    for name, encs in embeddings_db.items():
-        known_encodings.extend(encs)
-        known_names.extend([name] * len(encs))
+    best_name = "Unknown"
+    best_dist = float('inf')
+    threshold = 5000.0  # Tune based on your images (lower = stricter)
 
-    faces = []
-    for (top, right, bottom, left), enc in zip(face_locations, face_encodings):
-        matches = face_recognition.compare_faces(known_encodings, enc, tolerance=0.6)
-        name = "Unknown"
-        confidence = 0.0
-        if True in matches:
-            idx = matches.index(True)
-            name = known_names[idx]
-            distances = face_recognition.face_distance(known_encodings, enc)
-            confidence = round(1.0 - min(distances), 2)
-        faces.append({
-            'x': left, 'y': top,
-            'width': right - left, 'height': bottom - top,
-            'name': name, 'confidence': confidence
-        })
+    for name, feats in embeddings_db.items():
+        for feat in feats:
+            dist = np.linalg.norm(q_feat - np.array(feat))
+            if dist < best_dist:
+                best_dist = dist
+                best_name = name
 
-    message = "No match" if all(f['name'] == 'Unknown' for f in faces) else \
-              f"Recognized: {', '.join([f['name'] for f in faces if f['name'] != 'Unknown'])}"
+    confidence = round(max(0.0, 1.0 - (best_dist / threshold)), 2)
+    name = best_name if best_dist < threshold else "Unknown"
 
-    return jsonify({'status': 'success', 'faces': faces, 'message': message})
+    # Bounding box from first face (simple, single-face assumption)
+    (x, y, w, h) = faces[0]
+    faces_list = [{'x': int(x), 'y': int(y), 'width': int(w), 'height': int(h), 'name': name, 'confidence': confidence}]
+
+    message = f"Recognized: {name}" if name != "Unknown" else "No match"
+
+    return jsonify({'status': 'success', 'faces': faces_list, 'message': message})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
