@@ -1,6 +1,8 @@
-Flask==2.2.5
+Flask==2.3.3
 flask-cors==4.0.1
-deepface==0.0.75
-opencv-python==4.8.1.78
-numpy==1.23.5
+deepface==0.0.79
+opencv-python-headless==4.8.1.78
+numpy==1.24.3
+tensorflow==2.13.0
 gunicorn==21.2.0
+Pillow==10.3.0
